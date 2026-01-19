@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+dist/
+
+# Environment variables
+.env
+.env.local
+
+# Google Service Account Key (SENSITIVE)
+service-account.json
+
+# System Files
+.DS_Store
