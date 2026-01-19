@@ -279,7 +279,7 @@ const App = () => {
 
     const pricingPlans = [
         { title: "Owner Operator", price: "199", features: ["1 Mobile Test", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
-        { title: "Small Fleet", price: "175", features: ["3-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
+        { title: "Small Fleet", price: "175", features: ["2-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
         { title: "Enterprise", price: "145", features: ["10+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
     ];
 
@@ -350,7 +350,9 @@ const App = () => {
                         {/* Hero */}
                         <header className="pt-10 pb-20 px-6 max-w-7xl mx-auto grid lg:grid-cols-12 gap-16 items-center">
                             <div className="lg:col-span-7">
-                                <img src="/logo.jpg" alt="Golden State Clean Truck Check" className="h-40 md:h-56 w-auto object-contain mb-8" />
+                                <div className="flex justify-center lg:justify-start mb-8">
+                                    <img src="/logo.jpg" alt="Golden State Clean Truck Check" className="h-48 md:h-72 w-auto object-contain" />
+                                </div>
                                 <div className="inline-block px-4 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] mb-8 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-slate-200">Official CARB Partner</div>
 
                                 <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-6 text-slate-950">
@@ -364,7 +366,7 @@ const App = () => {
 
                                 {/* Rapid Response List */}
                                 <div className="flex flex-col gap-3 mb-12">
-                                    <p className="text-xs font-black uppercase tracking-widest text-slate-400 -mb-1">Trucks 2013 and Newer</p>
+                                    <p className="text-sm font-black uppercase tracking-widest text-slate-900">Trucks 2013 and Newer</p>
                                     {['Instant OBD Uploads', 'Heavy-Duty Opacity Testing', 'DMV Registration Support'].map((item, i) => (
                                         <div key={i} className="flex items-center gap-3 font-bold text-slate-700">
                                             <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
