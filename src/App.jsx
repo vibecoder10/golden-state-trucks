@@ -350,10 +350,10 @@ const App = () => {
                         {/* Hero */}
                         <header className="pt-10 pb-20 px-6 max-w-7xl mx-auto grid lg:grid-cols-12 gap-16 items-center">
                             <div className="lg:col-span-7">
-                                <div className="flex justify-center lg:justify-start mb-8">
-                                    <img src="/logo.jpg" alt="Golden State Clean Truck Check" className="h-48 md:h-72 w-auto object-contain" />
+                                <div className="flex flex-col items-center lg:items-start mb-8">
+                                    <img src="/logo.jpg" alt="Golden State Clean Truck Check" className="h-48 md:h-72 w-auto object-contain mb-4" />
+                                    <div className="px-4 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200">Official CARB Partner</div>
                                 </div>
-                                <div className="inline-block px-4 py-1.5 rounded-full bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] mb-8 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-slate-200">Official CARB Partner</div>
 
                                 <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-6 text-slate-950">
                                     CARB Compliance, <br />
