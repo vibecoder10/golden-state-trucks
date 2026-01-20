@@ -624,7 +624,7 @@ const App = () => {
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest leading-relaxed">Bay Area Clean Truck Check Specialists</p>
                     </div>
                     <div className="text-center md:text-right">
-                        <p className="text-3xl font-black text-slate-900 tracking-tighter">415.875.0124</p>
+                        <p className="text-3xl font-black text-slate-900 tracking-tighter">415-416-7565</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Open 7 Days — Mobile Dispatch</p>
                     </div>
                 </div>
