@@ -381,7 +381,7 @@ const App = () => {
                                     <button onClick={() => setView('booking')} className="bg-emerald-600 text-white px-10 py-5 rounded-2xl font-black shadow-2xl shadow-emerald-200 hover:bg-emerald-700 transition-all flex items-center gap-3 transform hover:-translate-y-1">
                                         Schedule Inspection <ArrowRight size={20} />
                                     </button>
-                                    <a href="tel:4158750124" className="bg-white border-2 border-slate-100 px-8 py-5 rounded-2xl font-black text-slate-900 uppercase tracking-widest hover:border-slate-300 transition-all flex items-center gap-3">
+                                    <a href="tel:4154167565" className="bg-white border-2 border-slate-100 px-8 py-5 rounded-2xl font-black text-slate-900 uppercase tracking-widest hover:border-slate-300 transition-all flex items-center gap-3">
                                         <Phone size={18} className="text-emerald-600" /> Dispatch
                                     </a>
                                 </div>
