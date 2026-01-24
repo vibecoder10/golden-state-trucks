@@ -143,11 +143,17 @@ const App = () => {
         }
     }, []);
 
+    // Scroll to top when view changes
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [view]);
+
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
         email: '',
         fleetSize: '',
+        truckCount: '',
         location: '',
         zipCode: '',
         county: '',
@@ -381,7 +387,7 @@ const App = () => {
                                     <button onClick={() => setView('booking')} className="bg-emerald-600 text-white px-10 py-5 rounded-2xl font-black shadow-2xl shadow-emerald-200 hover:bg-emerald-700 transition-all flex items-center gap-3 transform hover:-translate-y-1">
                                         Schedule Inspection <ArrowRight size={20} />
                                     </button>
-                                    <a href="tel:4158750124" className="bg-white border-2 border-slate-100 px-8 py-5 rounded-2xl font-black text-slate-900 uppercase tracking-widest hover:border-slate-300 transition-all flex items-center gap-3">
+                                    <a href="tel:4154167565" className="bg-white border-2 border-slate-100 px-8 py-5 rounded-2xl font-black text-slate-900 uppercase tracking-widest hover:border-slate-300 transition-all flex items-center gap-3">
                                         <Phone size={18} className="text-emerald-600" /> Dispatch
                                     </a>
                                 </div>
@@ -494,13 +500,18 @@ const App = () => {
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fleet Size</label>
                                             <div className="grid grid-cols-2 gap-2">
-                                                {['1-2', '3-9', '10-25', '25+'].map(s => (
+                                                {['1', '2-10', '11-25', '25+'].map(s => (
                                                     <button key={s} onClick={() => setFormData({ ...formData, fleetSize: s })} className={`py-3 rounded-xl text-xs font-black transition-all ${formData.fleetSize === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>{s}</button>
                                                 ))}
                                             </div>
                                         </div>
 
-                                        <button disabled={!formData.name || !formData.location || !formData.county || !formData.fleetSize} onClick={() => setStep(2)} className="w-full bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white py-5 rounded-2xl font-black shadow-xl mt-4">Next Step</button>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Exact Number of Trucks</label>
+                                            <input type="number" min="1" placeholder="How many trucks need service?" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" value={formData.truckCount} onChange={e => setFormData({ ...formData, truckCount: e.target.value })} />
+                                        </div>
+
+                                        <button disabled={!formData.name || !formData.location || !formData.county || !formData.fleetSize || !formData.truckCount} onClick={() => setStep(2)} className="w-full bg-emerald-600 disabled:bg-slate-200 disabled:text-slate-400 text-white py-5 rounded-2xl font-black shadow-xl mt-4">Next Step</button>
                                     </div>
                                 )}
 
@@ -624,7 +635,8 @@ const App = () => {
                         <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest leading-relaxed">Bay Area Clean Truck Check Specialists</p>
                     </div>
                     <div className="text-center md:text-right">
-                        <p className="text-3xl font-black text-slate-900 tracking-tighter">415.875.0124</p>
+                        <p className="text-3xl font-black text-slate-900 tracking-tighter">415.416.7565</p>
+                        <p className="text-xs font-bold text-slate-500 mt-1">Goldenstatectc@gmail.com</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2">Open 7 Days — Mobile Dispatch</p>
                     </div>
                 </div>
