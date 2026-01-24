@@ -517,7 +517,7 @@ const App = () => {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <input type="text" placeholder="Memo / Gate Code / Specific Instructions" className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm" value={formData.memo} onChange={e => setFormData({ ...formData, memo: e.target.value })} />
+                                            <input type="text" placeholder="Gate Code / Special Instructions (Optional)" className="w-full p-5 bg-amber-50 border-2 border-amber-200 rounded-2xl outline-none font-black text-base text-slate-900 placeholder:text-amber-600/60" value={formData.memo} onChange={e => setFormData({ ...formData, memo: e.target.value })} />
                                         </div>
 
                                         <div className="space-y-2">
@@ -580,7 +580,7 @@ const App = () => {
                                     <div className="animate-in slide-in-from-right-4 duration-500 flex flex-col gap-6">
                                         <div className="text-center">
                                             <h2 className="text-2xl font-black tracking-tight">Review Booking</h2>
-                                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Total: ${formData.selectedPlan?.price || '199'}.00</p>
+                                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Total: ${calculateTotal()}.00</p>
                                         </div>
 
                                         <div className="bg-slate-50 p-6 rounded-3xl space-y-4">
