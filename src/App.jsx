@@ -167,6 +167,13 @@ const App = () => {
         memo: ''
     });
 
+    // Quick Charge POS state
+    const [quickChargeData, setQuickChargeData] = useState({
+        customerName: '',
+        truckCount: '1',
+        notes: ''
+    });
+
     // County Schedules (Allow specific days)
     const COUNTY_SCHEDULE = {
         'San Francisco': ['Mon'],
@@ -356,6 +363,52 @@ const App = () => {
         setLoading(false);
     };
 
+    // Quick Charge POS - direct checkout without scheduling
+    const handleQuickCharge = async () => {
+        if (!quickChargeData.customerName || !quickChargeData.truckCount) {
+            alert('Please enter customer name and truck count');
+            return;
+        }
+
+        setLoading(true);
+        const truckCount = parseInt(quickChargeData.truckCount) || 1;
+        const pricePerTruck = getPricePerTruck(truckCount);
+        const totalPrice = truckCount * pricePerTruck;
+
+        const payload = {
+            name: quickChargeData.customerName,
+            truckCount,
+            pricePerTruck,
+            totalPrice,
+            location: 'On-Site / Quick Charge',
+            memo: quickChargeData.notes,
+            isQuickCharge: true
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/create-checkout-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert('Error: No checkout URL returned.');
+                }
+            } else {
+                alert('Server error. Please try again.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Quick charge error. Check console.');
+        }
+        setLoading(false);
+    };
+
     return (
         <div className="min-h-screen bg-[#FDFDFD] text-slate-900 font-sans selection:bg-emerald-100">
 
@@ -369,8 +422,11 @@ const App = () => {
                             <img src="/logo.jpg" alt="Golden State Clean Truck Check" className={`transition-all duration-300 w-auto object-contain ${scrolled || view !== 'landing' ? 'h-12 opacity-100' : 'h-0 opacity-0 w-0'}`} />
                         </div>
 
-                        <div className="hidden md:flex items-center gap-6">
-
+                        <div className="hidden md:flex items-center gap-4">
+                            <button onClick={() => setView('quickcharge')} className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-amber-600 transition-all">
+                                <Zap size={16} />
+                                Quick Charge
+                            </button>
                         </div>
                     </div>
                 </nav>
@@ -628,6 +684,85 @@ const App = () => {
                                         <button onClick={() => setStep(2)} className="text-center text-[10px] font-bold text-slate-400 mt-2">Back to Calendar</button>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {/* Quick Charge POS View */}
+                {view === 'quickcharge' && (
+                    <section className="pt-24 pb-24 px-6 min-h-screen">
+                        <div className="max-w-md mx-auto">
+                            <div className="text-center mb-8">
+                                <div className="w-16 h-16 bg-amber-500 text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                                    <Zap size={32} />
+                                </div>
+                                <h2 className="text-3xl font-black tracking-tight">Quick Charge</h2>
+                                <p className="text-slate-500 text-sm mt-2">Point of Sale - No scheduling required</p>
+                            </div>
+
+                            <div className="bg-white border border-slate-100 rounded-3xl p-8 shadow-xl space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Customer Name</label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter customer name"
+                                        className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-base"
+                                        value={quickChargeData.customerName}
+                                        onChange={e => setQuickChargeData({ ...quickChargeData, customerName: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Number of Trucks</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        placeholder="1"
+                                        className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-base"
+                                        value={quickChargeData.truckCount}
+                                        onChange={e => setQuickChargeData({ ...quickChargeData, truckCount: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Notes (Optional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="VIN, plate, or other notes"
+                                        className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none font-bold text-sm"
+                                        value={quickChargeData.notes}
+                                        onChange={e => setQuickChargeData({ ...quickChargeData, notes: e.target.value })}
+                                    />
+                                </div>
+
+                                {/* Price Summary */}
+                                <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-bold text-slate-600">
+                                            {quickChargeData.truckCount || 1} truck{parseInt(quickChargeData.truckCount) > 1 ? 's' : ''} × ${getPricePerTruck(quickChargeData.truckCount)}/truck
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-lg font-black text-slate-900">Total</span>
+                                        <span className="text-3xl font-black text-amber-600">
+                                            ${(parseInt(quickChargeData.truckCount) || 1) * getPricePerTruck(quickChargeData.truckCount)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleQuickCharge}
+                                    disabled={loading || !quickChargeData.customerName}
+                                    className="w-full bg-amber-500 disabled:bg-slate-200 disabled:text-slate-400 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-amber-600 transition-all flex items-center justify-center gap-3"
+                                >
+                                    {loading ? 'Processing...' : 'Charge Now'}
+                                    <ArrowRight size={18} />
+                                </button>
+
+                                <button onClick={() => setView('landing')} className="w-full text-center text-slate-400 font-bold text-sm hover:text-slate-600 transition-colors">
+                                    ← Back to Home
+                                </button>
                             </div>
                         </div>
                     </section>
