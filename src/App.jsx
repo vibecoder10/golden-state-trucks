@@ -145,7 +145,10 @@ const App = () => {
 
     // Scroll to top when view or step changes
     useEffect(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Use timeout to ensure it happens after content renders
+        setTimeout(() => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }, 50);
     }, [view, step]);
 
     const [formData, setFormData] = useState({
