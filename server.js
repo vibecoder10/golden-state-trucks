@@ -55,19 +55,25 @@ app.post('/create-checkout-session', async (req, res) => {
     try {
         const formData = req.body;
 
-        const price = formData.selectedPlan?.price ? parseInt(formData.selectedPlan.price) : 199;
+        // Dynamic pricing: use totalPrice from frontend, or calculate
+        const truckCount = parseInt(formData.truckCount) || 1;
+        let pricePerTruck = 199; // Default Owner Operator price
+        if (truckCount >= 2 && truckCount <= 10) pricePerTruck = 175;
+        else if (truckCount >= 11) pricePerTruck = 145;
+
+        const totalPrice = formData.totalPrice || (truckCount * pricePerTruck);
 
         const lineItems = [
             {
                 price_data: {
                     currency: 'usd',
                     product_data: {
-                        name: 'Clean Truck Inspection Service',
-                        description: `Booking for ${formData.name} at ${formData.location} (${formData.selectedPlan?.title || 'Standard'})`,
+                        name: `Clean Truck Inspection (${truckCount} truck${truckCount > 1 ? 's' : ''})`,
+                        description: `${formData.name} at ${formData.location} - $${pricePerTruck}/truck × ${truckCount} trucks`,
                     },
-                    unit_amount: price * 100,
+                    unit_amount: pricePerTruck * 100,
                 },
-                quantity: 1,
+                quantity: truckCount,
             },
         ];
 

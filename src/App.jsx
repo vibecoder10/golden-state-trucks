@@ -295,10 +295,33 @@ const App = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Calculate price per truck based on quantity tiers
+    const getPricePerTruck = (count) => {
+        const numTrucks = parseInt(count) || 1;
+        if (numTrucks === 1) return 199;
+        if (numTrucks >= 2 && numTrucks <= 10) return 175;
+        return 145; // 11+ trucks
+    };
+
+    const calculateTotal = () => {
+        const count = parseInt(formData.truckCount) || 1;
+        const pricePerTruck = getPricePerTruck(count);
+        return count * pricePerTruck;
+    };
+
     const handleFinalBooking = async () => {
         setLoading(true);
 
-        const payload = { ...formData };
+        const truckCount = parseInt(formData.truckCount) || 1;
+        const pricePerTruck = getPricePerTruck(truckCount);
+        const totalPrice = truckCount * pricePerTruck;
+
+        const payload = {
+            ...formData,
+            truckCount,
+            pricePerTruck,
+            totalPrice
+        };
 
 
         try {
@@ -578,7 +601,19 @@ const App = () => {
                                             </div>
                                         </div>
 
-                                        <button onClick={handleFinalBooking} className="w-full bg-black text-white py-6 rounded-2xl font-black shadow-xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-3">
+                                        {/* Price Summary */}
+                                        <div className="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-6 mt-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-sm font-bold text-slate-600">{formData.truckCount || 1} truck{parseInt(formData.truckCount) > 1 ? 's' : ''} × ${getPricePerTruck(formData.truckCount)}/truck</span>
+                                                <span className="text-sm font-bold text-slate-400">Tier: {parseInt(formData.truckCount) === 1 ? 'Standard' : parseInt(formData.truckCount) <= 10 ? 'Small Fleet' : 'Enterprise'}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-lg font-black text-slate-900">Total</span>
+                                                <span className="text-3xl font-black text-emerald-600">${calculateTotal()}</span>
+                                            </div>
+                                        </div>
+
+                                        <button onClick={handleFinalBooking} className="w-full bg-black text-white py-6 rounded-2xl font-black shadow-xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-3 mt-4">
                                             <span>Continue to Payment</span>
                                             <ArrowRight size={18} />
                                         </button>
