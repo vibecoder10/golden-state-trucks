@@ -422,10 +422,11 @@ const App = () => {
                             <img src="/logo.jpg" alt="Golden State Clean Truck Check" className={`transition-all duration-300 w-auto object-contain ${scrolled || view !== 'landing' ? 'h-12 opacity-100' : 'h-0 opacity-0 w-0'}`} />
                         </div>
 
-                        <div className="hidden md:flex items-center gap-4">
-                            <button onClick={() => setView('quickcharge')} className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-amber-600 transition-all">
-                                <Zap size={16} />
-                                Quick Charge
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setView('quickcharge')} className="flex items-center gap-2 bg-amber-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-xl font-bold text-xs md:text-sm hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/30">
+                                <Zap size={14} className="md:w-4 md:h-4" />
+                                <span className="hidden sm:inline">Quick Charge</span>
+                                <span className="sm:hidden">Pay</span>
                             </button>
                         </div>
                     </div>
