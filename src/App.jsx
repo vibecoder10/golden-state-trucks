@@ -143,10 +143,10 @@ const App = () => {
         }
     }, []);
 
-    // Scroll to top when view changes
+    // Scroll to top when view or step changes
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, [view]);
+    }, [view, step]);
 
     const [formData, setFormData] = useState({
         name: '',
