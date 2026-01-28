@@ -46,7 +46,7 @@ const parseDateTime = (dateStr, timeStr) => {
     if (meridian === 'AM' && hours === 12) hours = 0;
 
     const startDate = new Date(currentYear, month, day, hours, minutes);
-    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour duration
+    const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 90-minute duration (matches time slot intervals)
 
     return { start: startDate.toISOString(), end: endDate.toISOString() };
 };
