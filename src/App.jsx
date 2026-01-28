@@ -102,6 +102,9 @@ const App = () => {
     const [calendarDates, setCalendarDates] = useState([]);
     const [calendarMonth, setCalendarMonth] = useState('');
 
+    // Environment Config - must be defined before useEffects that use it
+    const API_URL = import.meta.env.PROD ? '' : 'http://localhost:4242';
+
     // Initial check for Stripe Success redirect
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
@@ -110,7 +113,7 @@ const App = () => {
             if (sessionId) {
                 setLoading(true);
                 // Verify and Sync to Calendar
-                fetch('http://localhost:4242/verify-booking', {
+                fetch(`${API_URL}/verify-booking`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_id: sessionId })
@@ -188,9 +191,6 @@ const App = () => {
 
     // Real-time Availability State
     const [busySlots, setBusySlots] = useState([]);
-
-    // Environment Config
-    const API_URL = import.meta.env.PROD ? '' : 'http://localhost:4242';
 
     useEffect(() => {
         if (!formData.selectedDate) return;
