@@ -30,7 +30,7 @@ app.use(express.json());
 
 const DOMAIN = process.env.RENDER_EXTERNAL_URL || 'http://localhost:5174';
 
-// Helper to parse "Feb 4" "11:30 AM" into ISO Dates
+// Helper to parse "Feb 4" "11:30 AM" into ISO Dates with timezone
 const parseDateTime = (dateStr, timeStr) => {
     const currentYear = new Date().getFullYear();
     const dateParts = dateStr.split(' '); // ["Feb", "4"]
@@ -45,10 +45,25 @@ const parseDateTime = (dateStr, timeStr) => {
     if (meridian === 'PM' && hours !== 12) hours += 12;
     if (meridian === 'AM' && hours === 12) hours = 0;
 
-    const startDate = new Date(currentYear, month, day, hours, minutes);
-    const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 90-minute duration (matches time slot intervals)
+    // Format as YYYY-MM-DDTHH:MM:SS (local time, timezone specified separately)
+    const pad = (n) => n.toString().padStart(2, '0');
+    const startStr = `${currentYear}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;
 
-    return { start: startDate.toISOString(), end: endDate.toISOString() };
+    // Calculate end time (90 minutes later)
+    let endHours = hours;
+    let endMinutes = minutes + 90;
+    let endDay = day;
+    if (endMinutes >= 60) {
+        endHours += Math.floor(endMinutes / 60);
+        endMinutes = endMinutes % 60;
+    }
+    if (endHours >= 24) {
+        endHours -= 24;
+        endDay += 1;
+    }
+    const endStr = `${currentYear}-${pad(month + 1)}-${pad(endDay)}T${pad(endHours)}:${pad(endMinutes)}:00`;
+
+    return { start: startStr, end: endStr };
 };
 
 app.post('/create-checkout-session', async (req, res) => {
@@ -118,8 +133,8 @@ app.post('/verify-booking', async (req, res) => {
                     summary: meta.service_address, // Use address as title
                     description: `Customer: ${meta.customer_name}\nAddress: ${meta.service_address}\nCounty: ${meta.county}\nPhone: ${session.customer_details?.phone || 'N/A'}\nEmail: ${session.customer_details?.email || 'N/A'}\n\nMemo: ${meta.memo || 'None'}`,
                     location: meta.service_address,
-                    start: { dateTime: start },
-                    end: { dateTime: end },
+                    start: { dateTime: start, timeZone: 'America/Los_Angeles' },
+                    end: { dateTime: end, timeZone: 'America/Los_Angeles' },
                 }
             });
             console.log('Calendar event created for:', meta.customer_name);
@@ -152,12 +167,13 @@ app.get('/check-availability', async (req, res) => {
         startOfDay.setHours(7, 0, 0, 0);
 
         const endOfDay = new Date(date);
-        endOfDay.setHours(19, 0, 0, 0);
+        endOfDay.setHours(21, 0, 0, 0); // Extended to 9 PM to catch 7 PM bookings (90 min duration)
 
         const response = await calendar.events.list({
             calendarId: CALENDAR_ID,
             timeMin: startOfDay.toISOString(),
             timeMax: endOfDay.toISOString(),
+            timeZone: 'America/Los_Angeles',
             singleEvents: true,
             orderBy: 'startTime',
         });
