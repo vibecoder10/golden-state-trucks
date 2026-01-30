@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-    Truck, Calendar, Phone, Clock, X, ArrowRight, CheckCircle2, Zap, Search, MapPin
+    Truck, Calendar, Phone, Clock, X, ArrowRight, CheckCircle2, Zap, Search, MapPin, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { mapData } from './MapData';
 
@@ -86,6 +86,8 @@ const App = () => {
     const [loading, setLoading] = useState(false);
     const [calendarDates, setCalendarDates] = useState([]);
     const [calendarMonth, setCalendarMonth] = useState('');
+    const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+    const [calendarMonthIndex, setCalendarMonthIndex] = useState(new Date().getMonth());
     const [busySlots, setBusySlots] = useState([]);
 
     // Environment Config
@@ -147,6 +149,7 @@ const App = () => {
         zipCode: '',
         county: '',
         selectedDate: '',
+        selectedYear: '',
         selectedTime: '',
         selectedPlan: null,
         memo: ''
@@ -169,51 +172,82 @@ const App = () => {
         }
     }, [formData.zipCode]);
 
-    // Generate calendar dates based on county
+    // Generate calendar dates based on county and selected month
     useEffect(() => {
         const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const dates = [];
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-        setCalendarMonth(`${monthNames[today.getMonth()]} ${today.getFullYear()}`);
+        setCalendarMonth(`${monthNames[calendarMonthIndex]} ${calendarYear}`);
 
-        for (let i = 0; i < 28; i++) {
-            const date = new Date(today);
-            date.setDate(today.getDate() + i + 1);
+        // Get first day of the month and number of days
+        const firstDayOfMonth = new Date(calendarYear, calendarMonthIndex, 1);
+        const lastDayOfMonth = new Date(calendarYear, calendarMonthIndex + 1, 0);
+        const daysInMonth = lastDayOfMonth.getDate();
 
+        // Generate dates for the month
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(calendarYear, calendarMonthIndex, day);
             const dayNameFull = date.toLocaleDateString('en-US', { weekday: 'short' });
-            const dayNum = date.getDate();
-            const monthStr = monthNames[date.getMonth()];
-            const fullDateStr = `${monthStr} ${dayNum}`;
+            const monthStr = monthNames[calendarMonthIndex];
+            const fullDateStr = `${monthStr} ${day}`;
 
             // Filter by County Schedule
             const allowedDays = COUNTY_SCHEDULE[formData.county] || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
             const isAllowed = allowedDays.includes(dayNameFull);
 
+            // Check if date is in the past
+            const isPast = date <= today;
+
             dates.push({
-                day: dayNum,
+                day: day,
                 weekday: dayNameFull.charAt(0),
                 weekdayFull: dayNameFull,
                 fullDate: fullDateStr,
-                disabled: !isAllowed
+                fullYear: calendarYear,
+                disabled: !isAllowed || isPast
             });
         }
 
-        // Add padding for grid alignment
-        const firstDayIndex = new Date(today);
-        firstDayIndex.setDate(today.getDate() + 1);
-        const paddingCount = firstDayIndex.getDay();
+        // Add padding for grid alignment (start from Sunday)
+        const paddingCount = firstDayOfMonth.getDay();
         const padding = Array(paddingCount).fill(null);
 
         setCalendarDates([...padding, ...dates]);
-    }, [formData.county]);
+    }, [formData.county, calendarMonthIndex, calendarYear]);
+
+    // Month navigation functions
+    const goToPrevMonth = () => {
+        if (calendarMonthIndex === 0) {
+            setCalendarMonthIndex(11);
+            setCalendarYear(calendarYear - 1);
+        } else {
+            setCalendarMonthIndex(calendarMonthIndex - 1);
+        }
+    };
+
+    const goToNextMonth = () => {
+        if (calendarMonthIndex === 11) {
+            setCalendarMonthIndex(0);
+            setCalendarYear(calendarYear + 1);
+        } else {
+            setCalendarMonthIndex(calendarMonthIndex + 1);
+        }
+    };
+
+    // Check if we can go to previous month (not before current month)
+    const canGoPrev = () => {
+        const today = new Date();
+        return calendarYear > today.getFullYear() ||
+               (calendarYear === today.getFullYear() && calendarMonthIndex > today.getMonth());
+    };
 
     // Fetch busy slots when date changes
     useEffect(() => {
-        if (!formData.selectedDate) return;
+        if (!formData.selectedDate || !formData.selectedYear) return;
 
-        const year = new Date().getFullYear();
-        const queryDate = `${formData.selectedDate} ${year}`;
+        const queryDate = `${formData.selectedDate} ${formData.selectedYear}`;
 
         fetch(`${API_URL}/check-availability?date=${queryDate}`)
             .then(res => res.json())
@@ -227,8 +261,7 @@ const App = () => {
     const isSlotBusy = (timeStr) => {
         if (busySlots.length === 0) return false;
 
-        const year = new Date().getFullYear();
-        const dateStr = `${formData.selectedDate} ${year} ${timeStr}`;
+        const dateStr = `${formData.selectedDate} ${formData.selectedYear} ${timeStr}`;
         const slotStart = new Date(dateStr).getTime();
         const slotEnd = slotStart + (90 * 60 * 1000);
 
@@ -556,20 +589,38 @@ const App = () => {
                                         </div>
 
                                         <div className="bg-slate-50 rounded-xl md:rounded-2xl p-3 md:p-4">
-                                            <p className="text-[10px] md:text-sm font-black text-slate-900 mb-3">{calendarMonth}</p>
+                                            {/* Month Navigation */}
+                                            <div className="flex items-center justify-between mb-3">
+                                                <button
+                                                    onClick={goToPrevMonth}
+                                                    disabled={!canGoPrev()}
+                                                    className={`p-1.5 md:p-2 rounded-lg transition-all ${canGoPrev() ? 'hover:bg-slate-200 text-slate-600' : 'text-slate-300 cursor-not-allowed'}`}
+                                                >
+                                                    <ChevronLeft size={18} />
+                                                </button>
+                                                <p className="text-sm md:text-base font-black text-slate-900">{calendarMonth}</p>
+                                                <button
+                                                    onClick={goToNextMonth}
+                                                    className="p-1.5 md:p-2 rounded-lg hover:bg-slate-200 text-slate-600 transition-all"
+                                                >
+                                                    <ChevronRight size={18} />
+                                                </button>
+                                            </div>
+
                                             <div className="grid grid-cols-7 gap-1 md:gap-2">
                                                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                                                     <div key={i} className="text-[9px] md:text-[10px] font-black text-center text-slate-400 pb-1">{d}</div>
                                                 ))}
                                                 {calendarDates.map((d, i) => {
                                                     if (!d) return <div key={i} className="p-1 md:p-2"></div>;
+                                                    const isSelected = formData.selectedDate === d.fullDate && formData.selectedYear === d.fullYear;
                                                     return (
                                                         <button
                                                             key={i}
                                                             disabled={d.disabled}
-                                                            onClick={() => setFormData({ ...formData, selectedDate: d.fullDate, selectedTime: '' })}
+                                                            onClick={() => setFormData({ ...formData, selectedDate: d.fullDate, selectedYear: d.fullYear, selectedTime: '' })}
                                                             className={`p-1.5 md:p-2 rounded-lg md:rounded-xl text-[11px] md:text-xs font-black transition-all ${
-                                                                formData.selectedDate === d.fullDate
+                                                                isSelected
                                                                     ? 'bg-emerald-600 text-white shadow-lg scale-105'
                                                                     : d.disabled
                                                                         ? 'opacity-20 bg-slate-100 text-slate-300 cursor-not-allowed'
@@ -585,7 +636,7 @@ const App = () => {
 
                                         {formData.selectedDate && (
                                             <div className="space-y-2 md:space-y-3">
-                                                <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Available Times for {formData.selectedDate}</p>
+                                                <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Available Times for {formData.selectedDate}, {formData.selectedYear}</p>
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                                     {TIME_SLOTS.map(t => {
                                                         const busy = isSlotBusy(t);
@@ -628,7 +679,7 @@ const App = () => {
                                         <div className="bg-slate-50 p-4 md:p-6 rounded-2xl md:rounded-3xl space-y-3 md:space-y-4">
                                             <div className="border-b border-slate-200 pb-3 md:pb-4">
                                                 <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Appointment</p>
-                                                <p className="text-sm md:text-base font-bold text-slate-900">{formData.selectedDate} @ {formData.selectedTime}</p>
+                                                <p className="text-sm md:text-base font-bold text-slate-900">{formData.selectedDate}, {formData.selectedYear} @ {formData.selectedTime}</p>
                                             </div>
                                             <div className="border-b border-slate-200 pb-3 md:pb-4">
                                                 <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</p>
@@ -760,7 +811,7 @@ const App = () => {
                             <h2 className="text-3xl md:text-4xl font-black tracking-tighter mb-3 md:mb-4 leading-none">You're Booked!</h2>
                             <p className="text-base md:text-lg text-slate-500 font-medium mb-8 md:mb-10 leading-relaxed">
                                 {formData.selectedDate && formData.selectedTime ? (
-                                    <>Confirmed for <span className="text-slate-900 font-bold underline decoration-emerald-500">{formData.selectedDate} at {formData.selectedTime}</span>.</>
+                                    <>Confirmed for <span className="text-slate-900 font-bold underline decoration-emerald-500">{formData.selectedDate}, {formData.selectedYear} at {formData.selectedTime}</span>.</>
                                 ) : (
                                     <>Your payment has been processed successfully.</>
                                 )}
