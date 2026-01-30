@@ -93,36 +93,74 @@ const App = () => {
     // Environment Config
     const API_URL = import.meta.env.PROD ? '' : 'http://localhost:4242';
 
+    // State for tracking calendar sync status
+    const [calendarSyncStatus, setCalendarSyncStatus] = useState({ synced: null, error: null });
+
     // Check for Stripe Success redirect
     useEffect(() => {
         const query = new URLSearchParams(window.location.search);
         if (query.get('success')) {
             const sessionId = query.get('session_id');
             if (sessionId) {
-                // Verify and sync to calendar
-                fetch(`${API_URL}/verify-booking`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_id: sessionId })
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        console.log('Calendar Sync:', data);
-                        if (data.status === 'success' && data.booking) {
-                            setFormData(prev => ({
-                                ...prev,
-                                selectedDate: data.booking.date,
-                                selectedTime: data.booking.time,
-                                name: data.booking.name
-                            }));
+                // Verify and sync to calendar with retry
+                const verifyBooking = async (retries = 3) => {
+                    for (let attempt = 1; attempt <= retries; attempt++) {
+                        try {
+                            const res = await fetch(`${API_URL}/verify-booking`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ session_id: sessionId })
+                            });
+                            const data = await res.json();
+                            console.log('Calendar Sync Response:', data);
+
+                            if (data.booking) {
+                                setFormData(prev => ({
+                                    ...prev,
+                                    selectedDate: data.booking.date || prev.selectedDate,
+                                    selectedYear: data.booking.year || prev.selectedYear,
+                                    selectedTime: data.booking.time || prev.selectedTime,
+                                    name: data.booking.name || prev.name
+                                }));
+                            }
+
+                            // Track calendar sync status
+                            if (data.calendar_synced === true) {
+                                setCalendarSyncStatus({ synced: true, error: null });
+                            } else if (data.status === 'partial' || data.calendar_synced === false) {
+                                setCalendarSyncStatus({
+                                    synced: false,
+                                    error: data.calendar_error || data.message || 'Calendar sync failed'
+                                });
+                                console.error('Calendar sync failed:', data.calendar_error || data.message);
+                            }
+
+                            setView('success');
+                            return; // Success, exit retry loop
+                        } catch (err) {
+                            console.error(`Verify booking attempt ${attempt}/${retries} failed:`, err);
+                            if (attempt < retries) {
+                                // Wait before retrying (exponential backoff)
+                                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                            } else {
+                                // All retries failed
+                                setCalendarSyncStatus({
+                                    synced: false,
+                                    error: 'Failed to verify booking. Please contact support.'
+                                });
+                                setView('success');
+                            }
                         }
-                        setView('success');
-                    })
-                    .catch(err => {
-                        console.error('Sync Error', err);
-                        setView('success');
-                    });
+                    }
+                };
+                verifyBooking();
             } else {
+                // No session_id - this shouldn't happen for scheduled bookings
+                console.error('Success redirect without session_id');
+                setCalendarSyncStatus({
+                    synced: false,
+                    error: 'Missing booking reference. Please contact support if your appointment does not appear.'
+                });
                 setView('success');
             }
         }
@@ -816,12 +854,35 @@ const App = () => {
                                     <>Your payment has been processed successfully.</>
                                 )}
                             </p>
+
+                            {/* Calendar Sync Warning */}
+                            {calendarSyncStatus.synced === false && (
+                                <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 md:p-6 mb-6 md:mb-8 text-left">
+                                    <div className="flex items-start gap-3">
+                                        <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center shrink-0">
+                                            <span className="text-amber-600 font-black text-sm">!</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-black text-amber-800 mb-1">Action Required</h4>
+                                            <p className="text-xs font-bold text-amber-700">
+                                                Your payment was successful, but there was an issue syncing your appointment to our calendar.
+                                                Please call us at <a href="tel:4154167565" className="underline">415.416.7565</a> to confirm your booking.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="bg-white border border-slate-100 p-6 md:p-10 rounded-3xl md:rounded-[48px] text-left mb-8 md:mb-10 shadow-xl">
                                 <h4 className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 md:mb-6">What Happens Next</h4>
                                 <ul className="space-y-4 md:space-y-6">
                                     <li className="flex gap-3 md:gap-4 items-start">
-                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0">1</div>
-                                        <p className="text-[11px] md:text-xs font-bold text-slate-700">Your appointment is synced to our dispatch calendar.</p>
+                                        <div className={`w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0 ${calendarSyncStatus.synced === false ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>1</div>
+                                        <p className="text-[11px] md:text-xs font-bold text-slate-700">
+                                            {calendarSyncStatus.synced === false
+                                                ? 'Please call us to confirm your appointment is on our calendar.'
+                                                : 'Your appointment is synced to our dispatch calendar.'}
+                                        </p>
                                     </li>
                                     <li className="flex gap-3 md:gap-4 items-start">
                                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[9px] md:text-[10px] font-black shrink-0">2</div>
@@ -833,7 +894,7 @@ const App = () => {
                                     </li>
                                 </ul>
                             </div>
-                            <button onClick={() => { setView('landing'); setStep(1); }} className="text-emerald-600 font-black uppercase text-[9px] md:text-[10px] tracking-widest hover:tracking-[0.2em] transition-all">Back to Home</button>
+                            <button onClick={() => { setView('landing'); setStep(1); setCalendarSyncStatus({ synced: null, error: null }); }} className="text-emerald-600 font-black uppercase text-[9px] md:text-[10px] tracking-widest hover:tracking-[0.2em] transition-all">Back to Home</button>
                         </div>
                     </section>
                 )}
