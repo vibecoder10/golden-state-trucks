@@ -30,11 +30,12 @@ app.use(express.json());
 
 const DOMAIN = process.env.RENDER_EXTERNAL_URL || 'http://localhost:5174';
 
-// Helper to parse "Feb 4" "11:30 AM" into ISO Dates with timezone
-const parseDateTime = (dateStr, timeStr) => {
-    const currentYear = new Date().getFullYear();
+// Helper to parse "Feb 4" "11:30 AM" and year into ISO Dates with timezone
+const parseDateTime = (dateStr, timeStr, yearStr) => {
+    // Use provided year or fall back to current year
+    const year = yearStr ? parseInt(yearStr) : new Date().getFullYear();
     const dateParts = dateStr.split(' '); // ["Feb", "4"]
-    const month = new Date(`${dateStr} ${currentYear}`).getMonth(); // 0-indexed
+    const month = new Date(`${dateStr} ${year}`).getMonth(); // 0-indexed
     const day = parseInt(dateParts[1]);
 
     const timeParts = timeStr.split(/[: ]/); // ["11", "30", "AM"]
@@ -47,7 +48,7 @@ const parseDateTime = (dateStr, timeStr) => {
 
     // Format as YYYY-MM-DDTHH:MM:SS (local time, timezone specified separately)
     const pad = (n) => n.toString().padStart(2, '0');
-    const startStr = `${currentYear}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;
+    const startStr = `${year}-${pad(month + 1)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;
 
     // Calculate end time (90 minutes later)
     let endHours = hours;
@@ -61,7 +62,7 @@ const parseDateTime = (dateStr, timeStr) => {
         endHours -= 24;
         endDay += 1;
     }
-    const endStr = `${currentYear}-${pad(month + 1)}-${pad(endDay)}T${pad(endHours)}:${pad(endMinutes)}:00`;
+    const endStr = `${year}-${pad(month + 1)}-${pad(endDay)}T${pad(endHours)}:${pad(endMinutes)}:00`;
 
     return { start: startStr, end: endStr };
 };
@@ -105,8 +106,10 @@ app.post('/create-checkout-session', async (req, res) => {
                 service_address: formData.location,
                 county: formData.county,
                 scheduled_date: formData.selectedDate,
+                scheduled_year: formData.selectedYear ? String(formData.selectedYear) : '',
                 scheduled_time: formData.selectedTime,
-                memo: formData.memo
+                memo: formData.memo,
+                is_quick_charge: formData.isQuickCharge ? 'true' : 'false'
             }
         });
 
@@ -117,43 +120,128 @@ app.post('/create-checkout-session', async (req, res) => {
     }
 });
 
+// Helper function to create calendar event with retry
+const createCalendarEventWithRetry = async (eventData, maxRetries = 3) => {
+    let lastError;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const result = await calendar.events.insert({
+                calendarId: CALENDAR_ID,
+                requestBody: eventData
+            });
+            return result;
+        } catch (error) {
+            lastError = error;
+            console.error(`Calendar API attempt ${attempt}/${maxRetries} failed:`, error.message);
+            if (attempt < maxRetries) {
+                // Exponential backoff: 1s, 2s, 4s
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+            }
+        }
+    }
+    throw lastError;
+};
+
 app.post('/verify-booking', async (req, res) => {
     try {
         const { session_id } = req.body;
+
+        if (!session_id) {
+            return res.status(400).json({
+                status: 'failed',
+                message: 'Missing session_id',
+                calendar_synced: false
+            });
+        }
+
         const session = await stripe.checkout.sessions.retrieve(session_id);
 
         if (session.payment_status === 'paid') {
             const meta = session.metadata;
-            // Create Google Calendar Event
-            const { start, end } = parseDateTime(meta.scheduled_date, meta.scheduled_time);
 
-            await calendar.events.insert({
-                calendarId: CALENDAR_ID,
-                requestBody: {
-                    summary: meta.service_address, // Use address as title
-                    description: `Customer: ${meta.customer_name}\nAddress: ${meta.service_address}\nCounty: ${meta.county}\nPhone: ${session.customer_details?.phone || 'N/A'}\nEmail: ${session.customer_details?.email || 'N/A'}\n\nMemo: ${meta.memo || 'None'}`,
-                    location: meta.service_address,
-                    start: { dateTime: start, timeZone: 'America/Los_Angeles' },
-                    end: { dateTime: end, timeZone: 'America/Los_Angeles' },
-                }
-            });
-            console.log('Calendar event created for:', meta.customer_name);
-            res.json({
-                status: 'success',
-                message: 'Booking verified and added to calendar',
-                booking: {
-                    date: meta.scheduled_date,
-                    time: meta.scheduled_time,
-                    name: meta.customer_name,
-                    phone: session.customer_details?.phone
-                }
-            });
+            // Check if this is a Quick Charge (no calendar event needed)
+            if (meta.is_quick_charge === 'true') {
+                console.log('Quick Charge payment verified for:', meta.customer_name);
+                return res.json({
+                    status: 'success',
+                    message: 'Quick Charge payment verified',
+                    calendar_synced: false,
+                    is_quick_charge: true,
+                    booking: {
+                        name: meta.customer_name,
+                        phone: session.customer_details?.phone
+                    }
+                });
+            }
+
+            // Validate required metadata for scheduled appointments
+            if (!meta.scheduled_date || !meta.scheduled_time) {
+                console.error('Missing appointment date/time in metadata:', meta);
+                return res.status(400).json({
+                    status: 'failed',
+                    message: 'Missing appointment date or time',
+                    calendar_synced: false
+                });
+            }
+
+            // Create Google Calendar Event with retry
+            const { start, end } = parseDateTime(meta.scheduled_date, meta.scheduled_time, meta.scheduled_year);
+
+            const eventData = {
+                summary: meta.service_address || 'Truck Inspection',
+                description: `Customer: ${meta.customer_name}\nAddress: ${meta.service_address}\nCounty: ${meta.county || 'N/A'}\nPhone: ${session.customer_details?.phone || 'N/A'}\nEmail: ${session.customer_details?.email || 'N/A'}\n\nMemo: ${meta.memo || 'None'}`,
+                location: meta.service_address,
+                start: { dateTime: start, timeZone: 'America/Los_Angeles' },
+                end: { dateTime: end, timeZone: 'America/Los_Angeles' },
+            };
+
+            try {
+                await createCalendarEventWithRetry(eventData);
+                console.log('Calendar event created for:', meta.customer_name, 'on', meta.scheduled_date, meta.scheduled_year, 'at', meta.scheduled_time);
+
+                res.json({
+                    status: 'success',
+                    message: 'Booking verified and added to calendar',
+                    calendar_synced: true,
+                    booking: {
+                        date: meta.scheduled_date,
+                        year: meta.scheduled_year,
+                        time: meta.scheduled_time,
+                        name: meta.customer_name,
+                        phone: session.customer_details?.phone
+                    }
+                });
+            } catch (calendarError) {
+                // Payment succeeded but calendar sync failed - this is critical
+                console.error('CRITICAL: Calendar sync failed after payment:', calendarError);
+                res.status(500).json({
+                    status: 'partial',
+                    message: 'Payment successful but calendar sync failed. Please contact support.',
+                    calendar_synced: false,
+                    calendar_error: calendarError.message,
+                    booking: {
+                        date: meta.scheduled_date,
+                        year: meta.scheduled_year,
+                        time: meta.scheduled_time,
+                        name: meta.customer_name,
+                        phone: session.customer_details?.phone
+                    }
+                });
+            }
         } else {
-            res.status(400).json({ status: 'failed', message: 'Payment not successful' });
+            res.status(400).json({
+                status: 'failed',
+                message: 'Payment not successful',
+                calendar_synced: false
+            });
         }
     } catch (error) {
         console.error('Error verifying booking:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({
+            status: 'error',
+            error: error.message,
+            calendar_synced: false
+        });
     }
 });
 
