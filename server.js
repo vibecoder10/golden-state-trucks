@@ -19,8 +19,14 @@ const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID;
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
 
 // Check if Google Calendar is properly configured
-const SERVICE_ACCOUNT_PATH = './service-account.json';
-const isCalendarConfigured = CALENDAR_ID && fs.existsSync(SERVICE_ACCOUNT_PATH);
+// Render.com stores secret files in /etc/secrets/
+const SERVICE_ACCOUNT_PATHS = [
+    '/etc/secrets/service-account.json',  // Render.com secret files location
+    './service-account.json'               // Local development
+];
+
+const SERVICE_ACCOUNT_PATH = SERVICE_ACCOUNT_PATHS.find(p => fs.existsSync(p));
+const isCalendarConfigured = CALENDAR_ID && SERVICE_ACCOUNT_PATH;
 
 let calendar = null;
 if (isCalendarConfigured) {
@@ -30,14 +36,14 @@ if (isCalendarConfigured) {
             scopes: SCOPES,
         });
         calendar = google.calendar({ version: 'v3', auth });
-        console.log('✓ Google Calendar configured successfully');
+        console.log('✓ Google Calendar configured successfully using:', SERVICE_ACCOUNT_PATH);
     } catch (error) {
         console.error('✗ Google Calendar configuration error:', error.message);
     }
 } else {
     console.warn('⚠ Google Calendar NOT configured:');
     if (!CALENDAR_ID) console.warn('  - Missing GOOGLE_CALENDAR_ID environment variable');
-    if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) console.warn('  - Missing service-account.json file');
+    if (!SERVICE_ACCOUNT_PATH) console.warn('  - Missing service-account.json file (checked: ' + SERVICE_ACCOUNT_PATHS.join(', ') + ')');
     console.warn('  Calendar sync will be disabled. Appointments will still be accepted.');
 }
 
