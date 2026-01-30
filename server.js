@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import cors from 'cors';
 import { google } from 'googleapis';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,12 +18,28 @@ const app = express();
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID;
 const SCOPES = ['https://www.googleapis.com/auth/calendar.events'];
 
-const auth = new google.auth.GoogleAuth({
-    keyFile: './service-account.json',
-    scopes: SCOPES,
-});
+// Check if Google Calendar is properly configured
+const SERVICE_ACCOUNT_PATH = './service-account.json';
+const isCalendarConfigured = CALENDAR_ID && fs.existsSync(SERVICE_ACCOUNT_PATH);
 
-const calendar = google.calendar({ version: 'v3', auth });
+let calendar = null;
+if (isCalendarConfigured) {
+    try {
+        const auth = new google.auth.GoogleAuth({
+            keyFile: SERVICE_ACCOUNT_PATH,
+            scopes: SCOPES,
+        });
+        calendar = google.calendar({ version: 'v3', auth });
+        console.log('✓ Google Calendar configured successfully');
+    } catch (error) {
+        console.error('✗ Google Calendar configuration error:', error.message);
+    }
+} else {
+    console.warn('⚠ Google Calendar NOT configured:');
+    if (!CALENDAR_ID) console.warn('  - Missing GOOGLE_CALENDAR_ID environment variable');
+    if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) console.warn('  - Missing service-account.json file');
+    console.warn('  Calendar sync will be disabled. Appointments will still be accepted.');
+}
 
 app.use(express.static('dist')); // Serve built frontend
 app.use(cors());
@@ -122,6 +139,11 @@ app.post('/create-checkout-session', async (req, res) => {
 
 // Helper function to create calendar event with retry
 const createCalendarEventWithRetry = async (eventData, maxRetries = 3) => {
+    // Check if calendar is configured
+    if (!calendar || !isCalendarConfigured) {
+        throw new Error('Google Calendar is not configured. Please contact support to set up calendar integration.');
+    }
+
     let lastError;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
@@ -251,6 +273,12 @@ app.get('/check-availability', async (req, res) => {
         const { date } = req.query; // Format: "Jan 25 2026" or "2026-01-25"
         if (!date) return res.status(400).json({ error: 'Date required' });
 
+        // If calendar is not configured, return empty (all slots available)
+        if (!calendar || !isCalendarConfigured) {
+            console.warn('Calendar not configured - returning empty availability');
+            return res.json({ busy: [], calendar_configured: false });
+        }
+
         const startOfDay = new Date(date);
         startOfDay.setHours(7, 0, 0, 0);
 
@@ -272,10 +300,10 @@ app.get('/check-availability', async (req, res) => {
             title: event.summary || 'Busy'
         }));
 
-        res.json({ busy: busySlots });
+        res.json({ busy: busySlots, calendar_configured: true });
     } catch (error) {
         console.error('Availability Check Error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message, calendar_configured: false });
     }
 });
 
