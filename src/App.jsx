@@ -504,6 +504,11 @@ const App = () => {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Credentialed Tester Badge */}
+                                <div className="bg-white rounded-3xl md:rounded-[40px] shadow-2xl overflow-hidden mt-4 md:mt-6">
+                                    <img src="/credentialed-tester.svg" alt="Clean Truck Check Credentialed Tester" className="w-full h-full object-contain p-6 md:p-10" />
+                                </div>
                             </div>
                         </header>
 
