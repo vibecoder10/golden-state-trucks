@@ -38,7 +38,7 @@ const COUNTY_SCHEDULE_DISPLAY = {
 };
 
 // Available time slots (90-minute appointments)
-const TIME_SLOTS = ['7:00 AM', '8:30 AM', '10:00 AM', '11:30 AM', '1:00 PM', '2:30 PM', '4:00 PM', '5:30 PM'];
+const TIME_SLOTS = ['7:00 AM', '8:30 AM', '10:00 AM', '11:30 AM', '1:00 PM', '2:30 PM', '5:00 PM', '6:00 PM', '7:00 PM'];
 
 // BayAreaMap: Interactive Map Component
 const BayAreaMap = ({ selectedCounty, onSelect }) => {
@@ -311,9 +311,9 @@ const App = () => {
     };
 
     const pricingPlans = [
-        { title: "Owner Operator", price: "199", features: ["1 Mobile Test", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
-        { title: "Small Fleet", price: "175", features: ["2-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
-        { title: "Enterprise", price: "145", features: ["10+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
+        { title: "Owner Operator", price: "175", features: ["1 Mobile Test", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
+        { title: "Small Fleet", price: "150", features: ["2-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
+        { title: "Enterprise", price: "125", features: ["10+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
     ];
 
     useEffect(() => {
@@ -324,9 +324,9 @@ const App = () => {
 
     const getPricePerTruck = (count) => {
         const numTrucks = parseInt(count) || 1;
-        if (numTrucks === 1) return 199;
-        if (numTrucks >= 2 && numTrucks <= 10) return 175;
-        return 145;
+        if (numTrucks === 1) return 175;
+        if (numTrucks >= 2 && numTrucks <= 10) return 150;
+        return 125;
     };
 
     const calculateTotal = () => {
