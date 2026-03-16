@@ -96,9 +96,9 @@ app.post('/create-checkout-session', async (req, res) => {
 
         // Dynamic pricing: use totalPrice from frontend, or calculate
         const truckCount = parseInt(formData.truckCount) || 1;
-        let pricePerTruck = 175; // Default Owner Operator price
-        if (truckCount >= 2 && truckCount <= 10) pricePerTruck = 150;
-        else if (truckCount >= 11) pricePerTruck = 125;
+        let pricePerTruck = 145; // Default Owner Operator price
+        if (truckCount >= 2 && truckCount <= 10) pricePerTruck = 125;
+        else if (truckCount >= 11) pricePerTruck = 100;
 
         const totalPrice = formData.totalPrice || (truckCount * pricePerTruck);
 
