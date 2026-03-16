@@ -311,9 +311,9 @@ const App = () => {
     };
 
     const pricingPlans = [
-        { title: "Owner Operator", price: "175", features: ["1 Mobile Test", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
-        { title: "Small Fleet", price: "150", features: ["2-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
-        { title: "Enterprise", price: "125", features: ["10+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
+        { title: "Owner Operator", price: "145", features: ["1 Mobile Test", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
+        { title: "Small Fleet", price: "125", features: ["2-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
+        { title: "Enterprise", price: "100", features: ["10+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
     ];
 
     useEffect(() => {
@@ -324,9 +324,9 @@ const App = () => {
 
     const getPricePerTruck = (count) => {
         const numTrucks = parseInt(count) || 1;
-        if (numTrucks === 1) return 175;
-        if (numTrucks >= 2 && numTrucks <= 10) return 150;
-        return 125;
+        if (numTrucks === 1) return 145;
+        if (numTrucks >= 2 && numTrucks <= 10) return 125;
+        return 100;
     };
 
     const calculateTotal = () => {
