@@ -53,6 +53,25 @@ app.use(express.json());
 
 const DOMAIN = process.env.RENDER_EXTERNAL_URL || 'http://localhost:5174';
 
+// --- Pricing (server-side source of truth — never trust client amounts) ---
+const YARD_FEE = 25;
+const YARD_FEE_COUNTIES = ['Contra Costa', 'Alameda', 'Santa Clara'];
+const YARD_FEE_WAIVER_TRUCKS = 3;
+
+const getPricePerTruck = (count) => {
+    const numTrucks = parseInt(count) || 1;
+    if (numTrucks <= 2) return 100;
+    if (numTrucks <= 10) return 90;
+    return 80;
+};
+
+// One-time yard visit (trip) fee for outlying counties, waived at 3+ trucks.
+const getYardFee = (county, count) => {
+    const numTrucks = parseInt(count) || 1;
+    if (numTrucks >= YARD_FEE_WAIVER_TRUCKS) return 0;
+    return YARD_FEE_COUNTIES.includes(county) ? YARD_FEE : 0;
+};
+
 // Helper to parse "Feb 4" "11:30 AM" and year into ISO Dates with timezone
 const parseDateTime = (dateStr, timeStr, yearStr) => {
     // Use provided year or fall back to current year
@@ -94,13 +113,10 @@ app.post('/create-checkout-session', async (req, res) => {
     try {
         const formData = req.body;
 
-        // Dynamic pricing: use totalPrice from frontend, or calculate
+        // Dynamic pricing computed server-side from truck count + county.
         const truckCount = parseInt(formData.truckCount) || 1;
-        let pricePerTruck = 145; // Default Owner Operator price
-        if (truckCount >= 2 && truckCount <= 10) pricePerTruck = 125;
-        else if (truckCount >= 11) pricePerTruck = 100;
-
-        const totalPrice = formData.totalPrice || (truckCount * pricePerTruck);
+        const pricePerTruck = getPricePerTruck(truckCount);
+        const yardFee = getYardFee(formData.county, truckCount);
 
         const lineItems = [
             {
@@ -115,6 +131,21 @@ app.post('/create-checkout-session', async (req, res) => {
                 quantity: truckCount,
             },
         ];
+
+        // Outlying-county yard visit fee (waived at 3+ trucks) as its own line.
+        if (yardFee > 0) {
+            lineItems.push({
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: 'Yard Visit Fee',
+                        description: `${formData.county} county trip fee`,
+                    },
+                    unit_amount: yardFee * 100,
+                },
+                quantity: 1,
+            });
+        }
 
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
@@ -132,6 +163,7 @@ app.post('/create-checkout-session', async (req, res) => {
                 scheduled_year: formData.selectedYear ? String(formData.selectedYear) : '',
                 scheduled_time: formData.selectedTime,
                 memo: formData.memo,
+                yard_fee: String(yardFee),
                 is_quick_charge: formData.isQuickCharge ? 'true' : 'false'
             }
         });

@@ -37,6 +37,12 @@ const COUNTY_SCHEDULE_DISPLAY = {
     'Contra Costa': 'Fridays & Sundays'
 };
 
+// Yard visit fee: counties farther from base pay a one-time trip fee,
+// waived once a booking has 3+ trucks (see getYardFee).
+const YARD_FEE = 25;
+const YARD_FEE_COUNTIES = ['Contra Costa', 'Alameda', 'Santa Clara'];
+const YARD_FEE_WAIVER_TRUCKS = 3;
+
 // Available time slots (90-minute appointments)
 const TIME_SLOTS = ['7:00 AM', '8:30 AM', '10:00 AM', '11:30 AM', '1:00 PM', '2:30 PM', '5:00 PM', '6:00 PM', '7:00 PM'];
 
@@ -311,9 +317,9 @@ const App = () => {
     };
 
     const pricingPlans = [
-        { title: "Owner Operator", price: "145", features: ["1 Mobile Test", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
-        { title: "Small Fleet", price: "125", features: ["2-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
-        { title: "Enterprise", price: "100", features: ["10+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
+        { title: "Owner Operator", price: "100", features: ["1-2 Units", "CARB Upload", "DMV Certificate", "24hr Processing"], popular: false },
+        { title: "Small Fleet", price: "90", features: ["3-10 Units", "Priority Slot", "Cloud Archive", "Compliance Alerts"], popular: true },
+        { title: "Enterprise", price: "80", features: ["11+ Units", "Volume Discount", "Custom Scheduling", "Dedicated Rep"], popular: false }
     ];
 
     useEffect(() => {
@@ -324,14 +330,21 @@ const App = () => {
 
     const getPricePerTruck = (count) => {
         const numTrucks = parseInt(count) || 1;
-        if (numTrucks === 1) return 145;
-        if (numTrucks >= 2 && numTrucks <= 10) return 125;
-        return 100;
+        if (numTrucks <= 2) return 100;
+        if (numTrucks <= 10) return 90;
+        return 80;
+    };
+
+    // One-time yard visit (trip) fee for outlying counties, waived at 3+ trucks.
+    const getYardFee = (county, count) => {
+        const numTrucks = parseInt(count) || 1;
+        if (numTrucks >= YARD_FEE_WAIVER_TRUCKS) return 0;
+        return YARD_FEE_COUNTIES.includes(county) ? YARD_FEE : 0;
     };
 
     const calculateTotal = () => {
         const count = parseInt(formData.truckCount) || 1;
-        return count * getPricePerTruck(count);
+        return count * getPricePerTruck(count) + getYardFee(formData.county, count);
     };
 
     // Handle final booking with Stripe payment
@@ -340,12 +353,14 @@ const App = () => {
 
         const truckCount = parseInt(formData.truckCount) || 1;
         const pricePerTruck = getPricePerTruck(truckCount);
-        const totalPrice = truckCount * pricePerTruck;
+        const yardFee = getYardFee(formData.county, truckCount);
+        const totalPrice = truckCount * pricePerTruck + yardFee;
 
         const payload = {
             ...formData,
             truckCount,
             pricePerTruck,
+            yardFee,
             totalPrice
         };
 
@@ -517,7 +532,7 @@ const App = () => {
                             <div className="max-w-7xl mx-auto">
                                 <div className="text-center mb-8 md:mb-16">
                                     <h2 className="text-3xl md:text-5xl font-black tracking-tighter mb-3 md:mb-4 text-slate-950">Transparent Pricing.</h2>
-                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] md:text-[11px]">Mobilization Fee included for Bay Area</p>
+                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] md:text-[11px]">Volume pricing · $25 yard visit fee in select counties, waived at 3+ trucks</p>
                                 </div>
                                 <div className="grid md:grid-cols-3 gap-4 md:gap-8 max-w-5xl mx-auto">
                                     {pricingPlans.map((plan, i) => (
@@ -741,8 +756,14 @@ const App = () => {
                                         <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl md:rounded-2xl p-4 md:p-6">
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-[11px] md:text-sm font-bold text-slate-600">{formData.truckCount} truck{parseInt(formData.truckCount) > 1 ? 's' : ''} × ${getPricePerTruck(formData.truckCount)}</span>
-                                                <span className="text-[10px] md:text-sm font-bold text-slate-400">{parseInt(formData.truckCount) === 1 ? 'Standard' : parseInt(formData.truckCount) <= 10 ? 'Fleet' : 'Enterprise'}</span>
+                                                <span className="text-[10px] md:text-sm font-bold text-slate-400">{parseInt(formData.truckCount) <= 2 ? 'Standard' : parseInt(formData.truckCount) <= 10 ? 'Fleet' : 'Enterprise'}</span>
                                             </div>
+                                            {getYardFee(formData.county, formData.truckCount) > 0 && (
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-[11px] md:text-sm font-bold text-slate-600">Yard visit fee</span>
+                                                    <span className="text-[11px] md:text-sm font-bold text-slate-600">${getYardFee(formData.county, formData.truckCount)}</span>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between items-center">
                                                 <span className="text-base md:text-lg font-black text-slate-900">Total</span>
                                                 <span className="text-2xl md:text-3xl font-black text-emerald-600">${calculateTotal()}</span>
