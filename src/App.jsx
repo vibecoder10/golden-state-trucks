@@ -620,8 +620,8 @@ const App = () => {
 
                                         <div className="space-y-2">
                                             <label className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">Fleet Size</label>
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {['1', '2-10', '11-25', '25+'].map(s => (
+                                            <div className="grid grid-cols-3 gap-2">
+                                                {['1-2', '3-10', '11+'].map(s => (
                                                     <button key={s} onClick={() => setFormData({ ...formData, fleetSize: s })} className={`py-2.5 md:py-3 rounded-xl text-[11px] md:text-xs font-black transition-all ${formData.fleetSize === s ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>{s}</button>
                                                 ))}
                                             </div>
